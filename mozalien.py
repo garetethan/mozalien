@@ -1,42 +1,33 @@
-#!/usr/bin/env python
-# -*- coding: utf-8-*-
-import praw
-import json
+from getpass import getpass
 import feedparser
+import praw
+from sys import argv
 
-def configure():
-    with open('settings.json') as f:
-        json_data = f.read()
-        settings = json.loads(json_data)
-        return settings
-    return None
-
-def login(reddit, settings):
-    reddit.login(settings['username'], settings['password'])
-
-
-def submit(subreddit, feed):
-    submission = subreddit.submit(title=feed['title'], url=feed['url'])
-    print submission.short_link
-
-
-def get_feeds(url):
-    feed = feedparser.parse(url)
-    return [{'url': x.link, 'title': x.title} for x in feed.entries]
-
+from settings import settings
 
 def main():
-    settings = configure()
-    r = praw.Reddit(user_agent='mozalien by /u/%s' % settings['username'])
-    sub = r.get_subreddit(settings['subreddit'])
-    login(r, settings)
-    feeds = get_feeds(settings['feed_url'])
-    feeds.reverse()
-    for feed in feeds:
-        if not len([x for x in r.info(feed['url'])]):
-            print feed['title']
-            submit(sub, feed)
+	dry_run = '-d' in argv or '--dry-run' in argv
+	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], user_agent=settings['user-agent'], username=settings['username'], password=getpass('Reddit password: '))
+	for subreddit in settings['subreddits']:
+		sub = red.subreddit(subreddit['name'])
+		feed_entries = [reversed(feedparser.parse(feed).entries) for feed in subreddit['feeds']]
+		for feed in feed_entries:
+			for entry in feed:
+				print(f'DEBUG: considering submitting "{entry}"')
+				try:
+					next(r.info(entry.link))
+				except StopIteration:
+					if dry_run:
+						dry_submit(sub, entry)
+					else:
+						submit(sub, entry)
 
+def dry_submit(subreddit, entry):
+	print(f'Submitted "{entry.title}" to r/{subreddit.display_name}.')
+
+def submit(subreddit, entry):
+	submission = subreddit.submit(title=entry.title, url=entry.link)
+	print(f' "{entry.title}" ({submission.short_link}).')
 
 if __name__ == '__main__':
-    main()
+	main()
