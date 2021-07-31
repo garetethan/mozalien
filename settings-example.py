@@ -3,6 +3,7 @@ settings = {
 	'client_secret': 'foo',
 	'username': 'foo',
 	'limit': 5,
+	'throttle': 10,
 	'dry_run': False,
 	'verbose': False,
 	'subreddits': [
