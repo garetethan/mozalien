@@ -2,6 +2,9 @@ settings = {
 	'client_id': 'foo',
 	'client_secret': 'foo',
 	'username': 'foo',
+	'limit': 5,
+	'dry_run': False,
+	'verbose': False,
 	'subreddits': [
 		{
 			'name': 'Nodumbquestions',
@@ -15,8 +18,9 @@ settings = {
 				'https://www.youtube.com/channel/UC2C_jShtL725hvbm1arSV9w',
 				'https://www.youtube.com/channel/UC127Qy2ulgASLYvW4AuHJZQ',
 			],
+			'limit': 2,
 		},
 	],
 }
 
-settings['user-agent'] = f'mozalien (by u/{settings["username"]})'
+settings['user_agent'] = f'mozalien (by u/{settings["username"]})'
