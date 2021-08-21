@@ -16,37 +16,42 @@ def main():
 	parser.add_argument('-e', '--client-secret', help='The Reddit client secret.')
 	parser.add_argument('-a', '--user-agent', help='The user agent used when making web requests.')
 	parser.add_argument('-n', '--username', help='The Reddit username.')
-	parser.add_argument('-p', '--password', help='The Reddit password. Use of this argument is discouraged. (You will be given a more secure prompt to enter the password unless you provide it here or in your settings file.)')
+	parser.add_argument('-p', '--password', help='The Reddit password. Use of this argument is discouraged. (You will be given a more secure prompt to enter the password unless you provide it in your settings file or here.)')
 	args = {k: v for k, v in vars(parser.parse_args()).items() if v}
 	settings = importlib.import_module(args['settings_path']).settings
 	settings.update(args)
 	settings.setdefault('submission_limit', 1000)
 	settings.setdefault('password', getpass('Reddit password: '))
 
-	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], user_agent=settings['user_agent'], username=settings['username'], password=settings['password'])
-	for subreddit in settings['subreddits']:
-		sub = red.subreddit(subreddit['name'])
-		for feed in (reversed(feedparser.parse(feed).entries) for feed in subreddit['feeds']):
-			submitted = 0
-			submission_limit = min(settings['submission_limit'], subreddit.get('submission_limit', 1000))
-			links = [entry.link for entry in feed]
-			existing_submissions = red.info(links)
-			# DEBUG
-			print(list(existing_submissions))
-			exit()
-			for i, entry in enumerate(entries):
-				# print(f'DEBUG: considering submitting "{entry.title}"')
-				if not existing_submissions[i]:
-					submit(sub, entry, submit=not dry_run, print_=dry_run or settings['verbose'])
-					submitted += 1
-				entry = next(feed)
-		sleep(settings['throttle'])
+	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], username=settings['username'], password=settings['password'], user_agent=settings['user_agent'])
+	for subData in settings['subreddits']:
+		sub = red.subreddit(subData['name'])
+		try:
+			limit = min(settings['submission_limit'], subData['submission_limit'])
+		except KeyError:
+			limit = settings['submission_limit']
+		feeds = list(feedparser.parse(feed).entries for feed in subData['feeds'])
+		combined_feed = sorted(list(entry for feed in feeds for entry in feed), key=lambda entry: entry.published_parsed, reverse=True)
+		latest_submitted = 0
+		try:
+			n = next(red.info(url=combined_feed[latest_submitted].link), None)
+			print(f'<{combined_feed[latest_submitted].link}> <{n}>')
+			while not n:
+				n = next(red.info(url=combined_feed[latest_submitted].link), None)
+				latest_submitted += 1
+			print(f'DEBUG: n: {n}')
+		except IndexError:
+			pass
+
+		for entry in reversed(combined_feed[max(latest_submitted - limit, 0) : latest_submitted]):
+			submit(sub, entry, submit=not settings['dry_run'], print_=settings['dry_run'] or settings['verbose'])
+			sleep(settings['throttle'])
 
 def submit(subreddit, entry, submit=True, print_=False):
 	if submit:
-		submission = subreddit.submit(title=entry.title, url=entry.link)
+		submission = subreddit.submit(title=entry.title, url=entry.link, resubmit=False)
 	if print_:
-		print(f'"{entry.title}" <{entry.link}> to r/{subreddit.display_name} <{submission.short_link if submit else None}>', end='')
+		print(f'"{entry.title}" <{entry.link}> to r/{subreddit.display_name} <{submission.short_link if submit else "dry run"}>')
 
 if __name__ == '__main__':
 	main()
