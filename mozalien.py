@@ -24,22 +24,19 @@ def main():
 	settings.setdefault('password', getpass('Reddit password: '))
 
 	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], username=settings['username'], password=settings['password'], user_agent=settings['user_agent'])
-	for subData in settings['subreddits']:
-		sub = red.subreddit(subData['name'])
+	for sub_data in settings['subreddits']:
+		print(f'Processing r/{sub_data["name"]}')
+		sub = red.subreddit(sub_data['name'])
 		try:
-			limit = min(settings['submission_limit'], subData['submission_limit'])
+			limit = min(settings['submission_limit'], sub_data['submission_limit'])
 		except KeyError:
 			limit = settings['submission_limit']
-		feeds = list(feedparser.parse(feed).entries for feed in subData['feeds'])
+		feeds = list(feedparser.parse(feed).entries for feed in sub_data['feeds'])
 		combined_feed = sorted(list(entry for feed in feeds for entry in feed), key=lambda entry: entry.published_parsed, reverse=True)
 		latest_submitted = 0
 		try:
-			n = next(red.info(url=combined_feed[latest_submitted].link), None)
-			print(f'<{combined_feed[latest_submitted].link}> <{n}>')
-			while not n:
-				n = next(red.info(url=combined_feed[latest_submitted].link), None)
+			while not next(red.info(url=combined_feed[latest_submitted].link), None):
 				latest_submitted += 1
-			print(f'DEBUG: n: {n}')
 		except IndexError:
 			pass
 
@@ -51,7 +48,10 @@ def submit(subreddit, entry, submit=True, print_=False):
 	if submit:
 		submission = subreddit.submit(title=entry.title, url=entry.link, resubmit=False)
 	if print_:
-		print(f'"{entry.title}" <{entry.link}> to r/{subreddit.display_name} <{submission.short_link if submit else "dry run"}>')
+		if submit:
+			print(f'Submitting "{entry.title}" <{entry.link}> to r/{subreddit.display_name} <{submission.permalink}>')
+		else:
+			print(f'Would submit "{entry.title}" <{entry.link}> to r/{subreddit.display_name}')
 
 if __name__ == '__main__':
 	main()
