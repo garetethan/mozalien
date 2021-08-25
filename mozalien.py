@@ -25,7 +25,8 @@ def main():
 
 	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], username=settings['username'], password=settings['password'], user_agent=settings['user_agent'])
 	for sub_data in settings['subreddits']:
-		print(f'Processing r/{sub_data["name"]}')
+		if settings['verbose']:
+			print(f'Checking r/{sub_data["name"]}...')
 		sub = red.subreddit(sub_data['name'])
 		try:
 			limit = min(settings['submission_limit'], sub_data['submission_limit'])
