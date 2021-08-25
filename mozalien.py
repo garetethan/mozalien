@@ -3,6 +3,7 @@ from getpass import getpass
 import feedparser
 import importlib
 import praw
+import re
 from time import sleep
 
 def main():
@@ -50,7 +51,7 @@ def submit(subreddit, entry, submit=True, print_=False):
 		submission = subreddit.submit(title=entry.title, url=entry.link, resubmit=False)
 	if print_:
 		if submit:
-			print(f'Submitting "{entry.title}" <{entry.link}> to r/{subreddit.display_name} <{submission.permalink}>')
+			print(f'Submitted "{entry.title}" <{entry.link}> to r/{subreddit.display_name}: https://redd.it/{submission.id}')
 		else:
 			print(f'Would submit "{entry.title}" <{entry.link}> to r/{subreddit.display_name}')
 
