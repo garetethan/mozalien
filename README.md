@@ -1,6 +1,6 @@
 # Mozalien
 
-A bot meant to post new entries from RSS feeds to Reddit.
+A bot that posts new entries from RSS feeds to Reddit.
 
 ## Usage
 
@@ -10,4 +10,4 @@ A bot meant to post new entries from RSS feeds to Reddit.
 
 ## Notes
 
-* Mozaly never marks posts as spoilers or as NSFW.
+* Mozalien never marks posts as spoilers or as NSFW.
