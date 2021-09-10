@@ -18,11 +18,13 @@ def main():
 	parser.add_argument('-a', '--user-agent', help='The user agent used when making web requests.')
 	parser.add_argument('-n', '--username', help='The Reddit username.')
 	parser.add_argument('-p', '--password', help='The Reddit password. Use of this argument is discouraged. (You will be given a more secure prompt to enter the password unless you provide it in your settings file or here.)')
+	parser.add_argument('-r', '--prefix', help='The prefix to add to all submission titles. Overrides the global prefix in the settings file, but is overridden by subreddit-specific prefixes in the settings file.')
 	args = {k: v for k, v in vars(parser.parse_args()).items() if v}
 	settings = importlib.import_module(args['settings_path']).settings
 	settings.update(args)
 	settings.setdefault('submission_limit', 1000)
 	settings.setdefault('password', getpass('Reddit password: '))
+	settings.setdefault('prefix', '')
 
 	red = praw.Reddit(client_id=settings['client_id'], client_secret=settings['client_secret'], username=settings['username'], password=settings['password'], user_agent=settings['user_agent'])
 	for sub_data in settings['subreddits']:
@@ -33,6 +35,7 @@ def main():
 			limit = min(settings['submission_limit'], sub_data['submission_limit'])
 		except KeyError:
 			limit = settings['submission_limit']
+		prefix = sub_data.get('prefix', settings['prefix'])
 		feeds = list(feedparser.parse(feed).entries for feed in sub_data['feeds'])
 		combined_feed = sorted(list(entry for feed in feeds for entry in feed), key=lambda entry: entry.published_parsed, reverse=True)
 		latest_submitted = 0
@@ -43,17 +46,18 @@ def main():
 			pass
 
 		for entry in reversed(combined_feed[max(latest_submitted - limit, 0) : latest_submitted]):
-			submit(sub, entry, submit=not settings['dry_run'], print_=settings['dry_run'] or settings['verbose'])
+			submit(sub, entry, prefix, submit=not settings['dry_run'], print_=settings['dry_run'] or settings['verbose'])
 			sleep(settings['throttle'])
 
-def submit(subreddit, entry, submit=True, print_=False):
+def submit(subreddit, entry, prefix='', submit=True, print_=False):
+	title = prefix + entry.title
 	if submit:
-		submission = subreddit.submit(title=entry.title, url=entry.link, resubmit=False)
+		submission = subreddit.submit(title=title, url=entry.link, resubmit=False)
 	if print_:
 		if submit:
-			print(f'Submitted "{entry.title}" <{entry.link}> to r/{subreddit.display_name}: https://redd.it/{submission.id}')
+			print(f'Submitted "{title}" <{entry.link}> to r/{subreddit.display_name}: https://redd.it/{submission.id}')
 		else:
-			print(f'Would submit "{entry.title}" <{entry.link}> to r/{subreddit.display_name}')
+			print(f'Would submit "{title}" <{entry.link}> to r/{subreddit.display_name}')
 
 if __name__ == '__main__':
 	main()
